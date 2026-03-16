@@ -6,6 +6,7 @@ android/app/build/
 android/.gradle/
 android/build/
 android/app/.cxx/
+android/app/debug.keystore
 ios/build/
 ios/Pods/
 
