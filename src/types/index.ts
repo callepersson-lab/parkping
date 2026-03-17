@@ -64,3 +64,9 @@ export type ParkingEvent = {
 
 // AsyncStorage key for parking history
 export const PARKING_HISTORY_KEY = "parking_history";
+
+// Root stack navigator screen params
+export type RootStackParamList = {
+  Main: undefined;
+  LastParkingMap: { latitude: number; longitude: number };
+};

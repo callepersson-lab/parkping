@@ -217,7 +217,7 @@ export function useParkingDetector(
         interval: config.sensorUpdateInterval,
       });
 
-      setState("monitoring"); // change "monitoring" to "driving"to save a parked value
+      setState("driving"); // change "monitoring" to "driving" to test saving parking coordinates
       setIsMonitoring(true);
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : "Okänt fel";
