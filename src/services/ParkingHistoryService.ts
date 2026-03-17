@@ -32,7 +32,7 @@ class ParkingHistoryService {
     return this.getHistoryInternal();
   }
 
-  async addEvent(event: ParkingEvent): Promise<ParkingEvent[]> {
+  async addParkingEvent(event: ParkingEvent): Promise<ParkingEvent[]> {
     const history = await this.getHistoryInternal();
 
     // Put newest at index 0

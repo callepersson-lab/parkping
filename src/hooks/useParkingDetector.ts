@@ -1,14 +1,16 @@
-import {useState, useCallback, useRef, useEffect} from 'react';
+import { useState, useCallback, useRef, useEffect } from "react";
 import {
   ParkingState,
   DetectionConfig,
   DEFAULT_CONFIG,
   AccelerometerData,
   LocationData,
-} from '../types';
-import {sensorService} from '../services/SensorService';
-import {notificationService} from '../services/NotificationService';
-import {backgroundService} from '../services/BackgroundService';
+  ParkingEvent,
+} from "../types";
+import { sensorService } from "../services/SensorService";
+import { notificationService } from "../services/NotificationService";
+import { backgroundService } from "../services/BackgroundService";
+import { parkingHistoryService } from "../services/ParkingHistoryService";
 
 interface UseParkingDetectorResult {
   state: ParkingState;
@@ -19,20 +21,24 @@ interface UseParkingDetectorResult {
   stopMonitoring: () => Promise<void>;
   toggleMonitoring: () => Promise<void>;
   error: string | null;
+  lastParking: ParkingEvent | null;
 }
 
 export function useParkingDetector(
   config: DetectionConfig = DEFAULT_CONFIG,
 ): UseParkingDetectorResult {
-  const [state, setState] = useState<ParkingState>('idle');
+  const [state, setState] = useState<ParkingState>("idle");
   const [isMonitoring, setIsMonitoring] = useState(false);
   const [currentSpeed, setCurrentSpeed] = useState(0);
   const [vibrationLevel, setVibrationLevel] = useState(0);
   const [error, setError] = useState<string | null>(null);
+  const [lastParking, setLastParking] = useState<ParkingEvent | null>(null);
 
   // Refs for tracking state transitions
-  const stateRef = useRef<ParkingState>('idle');
-  const possiblyParkedTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const stateRef = useRef<ParkingState>("idle");
+  const possiblyParkedTimerRef = useRef<ReturnType<typeof setTimeout> | null>(
+    null,
+  );
   const lastAccelDataRef = useRef<AccelerometerData | null>(null);
   const lastLocationDataRef = useRef<LocationData | null>(null);
 
@@ -41,17 +47,25 @@ export function useParkingDetector(
     stateRef.current = state;
   }, [state]);
 
+  // Load last parking from storage on mount
+  useEffect(() => {
+    parkingHistoryService
+      .getLastParking()
+      .then(setLastParking)
+      .catch((err) => {
+        console.error("Failed to load last parking:", err);
+      });
+  }, []);
+
   // Handle accelerometer data
-  const handleAccelerometerData = useCallback(
-    (data: AccelerometerData) => {
-      lastAccelDataRef.current = data;
-      const vibration = sensorService.constructor.prototype.constructor.calculateVibrationMagnitude
-        ? (sensorService as any).constructor.calculateVibrationMagnitude(data)
-        : Math.abs(Math.sqrt(data.x ** 2 + data.y ** 2 + data.z ** 2) - 9.8);
-      setVibrationLevel(vibration);
-    },
-    [],
-  );
+  const handleAccelerometerData = useCallback((data: AccelerometerData) => {
+    lastAccelDataRef.current = data;
+    const vibration = sensorService.constructor.prototype.constructor
+      .calculateVibrationMagnitude
+      ? (sensorService as any).constructor.calculateVibrationMagnitude(data)
+      : Math.abs(Math.sqrt(data.x ** 2 + data.y ** 2 + data.z ** 2) - 9.8);
+    setVibrationLevel(vibration);
+  }, []);
 
   // Handle location data and state transitions
   const handleLocationData = useCallback(
@@ -65,52 +79,73 @@ export function useParkingDetector(
 
       // State machine logic
       switch (currentState) {
-        case 'monitoring':
+        case "monitoring":
           // Check if driving has started
           if (
             speedKmh > config.drivingSpeedThreshold &&
             vibration > config.vibrationThreshold
           ) {
-            setState('driving');
+            setState("driving");
             backgroundService.updateNotification(
-              'Körning detekterad',
+              "Körning detekterad",
               `Hastighet: ${speedKmh.toFixed(1)} km/h`,
             );
           }
           break;
 
-        case 'driving':
+        case "driving":
           // Update notification with current speed
           backgroundService.updateNotification(
-            'Kör',
+            "Kör",
             `Hastighet: ${speedKmh.toFixed(1)} km/h`,
           );
 
           // Check if stopped
           if (speedKmh < config.parkedSpeedThreshold) {
-            setState('possibly_parked');
+            setState("possibly_parked");
             backgroundService.updateNotification(
-              'Möjlig parkering',
-              'Väntar på bekräftelse...',
+              "Möjlig parkering",
+              "Väntar på bekräftelse...",
             );
 
             // Start confirmation timer
             possiblyParkedTimerRef.current = setTimeout(() => {
-              if (stateRef.current === 'possibly_parked') {
-                setState('parked');
+              if (stateRef.current === "possibly_parked") {
+                setState("parked");
                 notificationService.sendParkingNotification();
                 backgroundService.updateNotification(
-                  'Parkerad!',
-                  'Notis skickad',
+                  "Parkerad!",
+                  "Notis skickad",
                 );
+
+                // Save parking event and update lastParking
+                const location = lastLocationDataRef.current;
+                if (location) {
+                  const event: ParkingEvent = {
+                    id: Date.now().toString(),
+                    latitude: location.latitude,
+                    longitude: location.longitude,
+                    timestamp: Date.now(),
+                  };
+
+                  void (async () => {
+                    try {
+                      const updatedHistory =
+                        await parkingHistoryService.addParkingEvent(event);
+                      setLastParking(updatedHistory[0] ?? event);
+                    } catch (err) {
+                      console.error("Failed to save parking event:", err);
+                    }
+                  })();
+                }
 
                 // Reset to monitoring after a short delay
                 setTimeout(() => {
-                  if (stateRef.current === 'parked') {
-                    setState('monitoring');
+                  if (stateRef.current === "parked") {
+                    setState("monitoring");
                     backgroundService.updateNotification(
-                      'ParkPing är aktiv',
-                      'Övervakar för parkering...',
+                      "ParkPing är aktiv",
+                      "Övervakar för parkering...",
                     );
                   }
                 }, 5000);
@@ -119,28 +154,28 @@ export function useParkingDetector(
           }
           break;
 
-        case 'possibly_parked':
+        case "possibly_parked":
           // If speed increases again, cancel the parking confirmation
           if (speedKmh > config.parkedSpeedThreshold) {
             if (possiblyParkedTimerRef.current) {
               clearTimeout(possiblyParkedTimerRef.current);
               possiblyParkedTimerRef.current = null;
             }
-            setState('driving');
+            setState("driving");
             backgroundService.updateNotification(
-              'Kör igen',
+              "Kör igen",
               `Hastighet: ${speedKmh.toFixed(1)} km/h`,
             );
           }
           break;
 
-        case 'parked':
+        case "parked":
           // If movement detected after parking, go back to monitoring
           if (speedKmh > config.drivingSpeedThreshold) {
-            setState('monitoring');
+            setState("monitoring");
             backgroundService.updateNotification(
-              'ParkPing är aktiv',
-              'Övervakar för parkering...',
+              "ParkPing är aktiv",
+              "Övervakar för parkering...",
             );
           }
           break;
@@ -157,7 +192,7 @@ export function useParkingDetector(
       // Request permissions
       const hasPermission = await sensorService.requestPermissions();
       if (!hasPermission) {
-        setError('Platsbehörighet nekad');
+        setError("Platsbehörighet nekad");
         return;
       }
 
@@ -169,7 +204,7 @@ export function useParkingDetector(
         handleAccelerometerData,
         config.sensorUpdateInterval,
       );
-      sensorService.startLocationTracking(handleLocationData, err => {
+      sensorService.startLocationTracking(handleLocationData, (err) => {
         setError(`Platsfel: ${err.message}`);
       });
 
@@ -182,12 +217,12 @@ export function useParkingDetector(
         interval: config.sensorUpdateInterval,
       });
 
-      setState('monitoring');
+      setState("monitoring"); // change "monitoring" to "driving"to save a parked value
       setIsMonitoring(true);
     } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Okänt fel';
+      const errorMessage = err instanceof Error ? err.message : "Okänt fel";
       setError(errorMessage);
-      console.error('Failed to start monitoring:', err);
+      console.error("Failed to start monitoring:", err);
     }
   }, [config, handleAccelerometerData, handleLocationData]);
 
@@ -209,12 +244,12 @@ export function useParkingDetector(
       // Cancel notifications
       notificationService.cancelMonitoringNotification();
 
-      setState('idle');
+      setState("idle");
       setIsMonitoring(false);
       setCurrentSpeed(0);
       setVibrationLevel(0);
     } catch (err) {
-      console.error('Failed to stop monitoring:', err);
+      console.error("Failed to stop monitoring:", err);
     }
   }, []);
 
@@ -246,5 +281,6 @@ export function useParkingDetector(
     stopMonitoring,
     toggleMonitoring,
     error,
+    lastParking,
   };
 }

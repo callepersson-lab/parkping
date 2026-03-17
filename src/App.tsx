@@ -9,6 +9,11 @@ import {
 } from "react-native";
 import { useParkingDetector } from "./hooks/useParkingDetector";
 import { ParkingState, DEV_CONFIG, DEFAULT_CONFIG } from "./types";
+import { LastParkingMapScreen } from "./screens/LastParkingMapScreen";
+import { NavigationContainer } from "@react-navigation/native";
+import { createNativeStackNavigator } from "@react-navigation/native-stack";
+import { MapPinned } from "lucide-react-native";
+import { parkingHistoryService } from "./services/ParkingHistoryService";
 
 // Use DEV_CONFIG for testing (10 sec delay), switch to DEFAULT_CONFIG for production
 const config = __DEV__ ? DEV_CONFIG : DEFAULT_CONFIG;
@@ -52,6 +57,9 @@ function App(): React.JSX.Element {
     toggleMonitoring,
     error,
   } = useParkingDetector(config);
+
+  // just to test if the history is saved in AsyncStorage
+  parkingHistoryService.getHistory().then(console.log);
 
   const stateColor = getStateColor(state);
 
