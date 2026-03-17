@@ -84,6 +84,18 @@ android {
         targetSdkVersion rootProject.ext.targetSdkVersion
         versionCode 1
         versionName "1.0"
+
+    // Read MAPS_API_KEY from android/local.properties and expose it as a manifest placeholder
+        def localPropsFile = rootProject.file("local.properties")
+        if (localPropsFile.exists()) {
+            def localProps = new Properties()
+            localProps.load(new FileInputStream(localPropsFile))
+            def mapsApiKey = localProps.getProperty("MAPS_API_KEY", "")
+            manifestPlaceholders = [googleMapsApiKey: mapsApiKey]
+        } else {
+            // Fallback to empty string so build still runs (map will fail without a key)
+            manifestPlaceholders = [googleMapsApiKey: ""]
+        }
     }
     signingConfigs {
         debug {

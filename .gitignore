@@ -10,6 +10,9 @@ android/app/debug.keystore
 ios/build/
 ios/Pods/
 
+# Local Android config (SDK path + local secrets). Never commit.
+android/local.properties
+
 # Metro
 .metro-health-check*
 
