@@ -8,6 +8,7 @@ En React Native-app som automatiskt detekterar nar du har parkerat bilen och ski
 - Lokal push-notis nar parkering detekteras
 - Bakgrundskorning - fungerar aven nar appen ar minimerad
 - Enkel on/off-knapp for overvakning
+- Visa senaste parkering på karta
 
 ## Forsta steget (Windows + Android)
 
@@ -24,6 +25,17 @@ En React Native-app som automatiskt detekterar nar du har parkerat bilen och ski
    Path += %ANDROID_HOME%\platform-tools
    Path += %ANDROID_HOME%\emulator
    ```
+
+### Google Maps API-nyckel (Android)
+
+1. Kopiera `android/local.properties.example` till `android/local.properties`
+2. Sätt din nyckel:
+
+```properties
+MAPS_API_KEY=DIN_GOOGLE_MAPS_API_KEY
+```
+
+3. Committa aldrig `android/local.properties` (den är ignorerad i `.gitignore`)
 
 ### Installation
 
@@ -43,17 +55,22 @@ npm run android
 ```
 ParkPing/
 ├── src/
-│   ├── App.tsx                    # Huvud-UI med toggle-knapp
+│   ├── App.tsx                      # Navigation + skärmar
 │   ├── hooks/
-│   │   └── useParkingDetector.ts  # Logik for parkeringsdetektering
+│   │   └── useParkingDetector.ts    # Logik för parkeringsdetektering
+│   ├── screens/
+│   │   ├── HomeScreen.tsx           # Startskärm + status + knappar/flöden
+│   │   └── LastParkingMapScreen.tsx # Karta för senaste parkering
 │   ├── services/
-│   │   ├── SensorService.ts       # Accelerometer + GPS hantering
-│   │   ├── NotificationService.ts # Push-notis konfiguration
-│   │   └── BackgroundService.ts   # Bakgrundskorning
+│   │   ├── SensorService.ts         # Accelerometer + GPS hantering
+│   │   ├── NotificationService.ts   # Push-notis konfiguration
+│   │   ├── BackgroundService.ts     # Bakgrundskörning
+│   │   └── ParkingHistoryService.ts # Sparar/hämtar parkeringshistorik
 │   └── types/
-│       └── index.ts               # TypeScript-typer
-├── android/                        # Android-specifik config
-└── ios/                            # iOS-specifik config
+│       └── index.ts                 # TypeScript-typer
+├── __tests__/                       # Jest-tester
+├── android/                         # Android-specifik config
+└── ios/                             # iOS-specifik config
 ```
 
 ## Detekteringslogik
@@ -67,6 +84,7 @@ Hog hastighet   Lag hastighet  Efter 1 min
 ```
 
 **States:**
+
 1. `idle` - Overvakning av
 2. `monitoring` - Vantar pa korning
 3. `driving` - Detekterat bilkorning
@@ -78,14 +96,29 @@ Hog hastighet   Lag hastighet  Efter 1 min
 For snabbare testning i emulatorn ar fordrojningen satt till 10 sekunder istallet for 1 minut i utvecklingslage.
 
 Tips for testning i emulator:
+
 - Anvand "Extended Controls" -> "Location" for att simulera GPS-rorelse
 - Emulator har begransad sensordata
 
+### Automatiska tester (Jest)
+
+Kör tester med:
+
+```bash
+npm test
+```
+
+Vissa native-moduler mockas i testmiljön via `jest.setup.js`.
+
 ## Bibliotek
 
-| Bibliotek | Syfte |
-|-----------|-------|
-| `react-native-sensors` | Accelerometerdata |
-| `@react-native-community/geolocation` | GPS-hastighet |
-| `react-native-push-notification` | Lokala push-notiser |
-| `react-native-background-actions` | Bakgrundskorning |
+| Bibliotek                                   | Syfte               |
+| ------------------------------------------- | ------------------- |
+| `react-native-sensors`                      | Accelerometerdata   |
+| `@react-native-community/geolocation`       | GPS-hastighet       |
+| `react-native-push-notification`            | Lokala push-notiser |
+| `react-native-background-actions`           | Bakgrundskorning    |
+| `react-native-maps`                         | Visa karta          |
+| `@react-navigation/native`                  | Navigation          |
+| `@react-native-async-storage/async-storage` | Parkeringshistorik  |
+| `lucide-react-native`                       | Ikoner              |

@@ -68,5 +68,10 @@
         android:value="Parking detection notifications"/>
       <meta-data android:name="com.dieam.reactnativepushnotification.notification_color"
         android:resource="@color/notification_color"/>
+
+        <!-- Google Maps API key (comes from manifestPlaceholders.googleMapsApiKey) -->
+      <meta-data
+        android:name="com.google.android.geo.API_KEY"
+        android:value="${googleMapsApiKey}" />
     </application>
 </manifest>
