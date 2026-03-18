@@ -9,6 +9,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import MapView, { Marker } from "react-native-maps";
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
+import { ChevronLeft } from "lucide-react-native";
 
 import { RootStackParamList } from "../types";
 
@@ -53,8 +54,12 @@ export function LastParkingMapScreen({
       <StatusBar barStyle="light-content" backgroundColor="#1a1a2e" />
       <View style={styles.wrapper}>
         <View style={styles.header}>
-          <TouchableOpacity onPress={() => navigation.goBack()}>
-            <Text style={styles.headerBack}>‹ Tillbaka</Text>
+          <TouchableOpacity
+            onPress={() => navigation.goBack()}
+            style={{ flexDirection: "row", alignItems: "center" }}
+          >
+            <ChevronLeft color="#4A90D9" size={20} />
+            <Text style={styles.headerBack}>Tillbaka</Text>
           </TouchableOpacity>
           <Text style={styles.headerTitle}>Din bil</Text>
           <View style={styles.headerSpacer} />
@@ -65,8 +70,8 @@ export function LastParkingMapScreen({
           initialRegion={{
             latitude,
             longitude,
-            latitudeDelta: 0.005,
-            longitudeDelta: 0.005,
+            latitudeDelta: 0.0005,
+            longitudeDelta: 0.0005,
           }}
         >
           <Marker
