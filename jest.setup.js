@@ -1,41 +1,34 @@
 import { jest } from '@jest/globals';
 
-// Mock Geolocation (för GPS-hastighet)
+// Mocka Geolocation (för GPS/Hastighet)
 jest.mock('@react-native-community/geolocation', () => ({
   setRNConfiguration: jest.fn(),
-  watchPosition: jest.fn((success) => {
-    // Vi simulerar att vi startar prenumerationen
-    return 1;
-  }),
+  getCurrentPosition: jest.fn((success) => success({
+    coords: { latitude: 59.3, longitude: 18.0, speed: 0 },
+    timestamp: Date.now(),
+  })),
+  watchPosition: jest.fn(() => 1),
   clearWatch: jest.fn(),
-  stopObservation: jest.fn(),
+  stopObserving: jest.fn(),
 }));
 
-// Mock React Native Sensors (för vibrationer)
+// Mocka Sensors (för vibrationer/rörelse)
 jest.mock('react-native-sensors', () => ({
   accelerometer: {
-    subscribe: jest.fn(() => ({
-      unsubscribe: jest.fn(),
-    })),
+    subscribe: jest.fn(() => ({ unsubscribe: jest.fn() })),
   },
   setUpdateIntervalForType: jest.fn(),
-  SensorTypes: {
-    accelerometer: 'accelerometer',
-  },
+  SensorTypes: { accelerometer: 'accelerometer' },
 }));
 
-// Mock Background Actions
+// Mocka Bakgrundstjänster och Notiser
 jest.mock('react-native-background-actions', () => ({
   start: jest.fn(),
   stop: jest.fn(),
   isRunning: jest.fn(() => false),
-  updateNotification: jest.fn(),
 }));
 
-// Mock Push Notifications
 jest.mock('react-native-push-notification', () => ({
-  configure: jest.fn(),
-  createChannel: jest.fn(),
   localNotification: jest.fn(),
-  cancelLocalNotification: jest.fn(),
+  createChannel: jest.fn(),
 }));
